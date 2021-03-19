@@ -13,7 +13,7 @@ $ git clone git@github.com:sanketdaru/async-jobs-over-restful-api.git
 $ cd async-jobs-over-restful-api
 ```
 
-## Ensure you have JDK 11 or later installed and set as JAVA_HOME.
+## Ensure JDK 11 or later is installed
 ```
 $ java -version
 openjdk version "15.0.1" 2020-10-20
@@ -22,6 +22,8 @@ OpenJDK 64-Bit Server VM Corretto-15.0.1.9.1 (build 15.0.1+9, mixed mode, sharin
 ```
 
 # Run project
+
+To change where the uploaded job files as well as resulting output files are stored on filesystem, you can modify the `app-configs.jobFilesLocation` property in the `application.properties` file.
 
 Using gradle-wrapper run the SpringBoot project
 ```
