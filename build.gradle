@@ -6,7 +6,7 @@ plugins {
 
 group = 'com.sanketdaru.poc'
 version = '1.0.0'
-sourceCompatibility = '15'
+sourceCompatibility = '11'
 
 repositories {
 	mavenLocal()
