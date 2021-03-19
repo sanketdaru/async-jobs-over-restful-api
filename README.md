@@ -25,7 +25,7 @@ OpenJDK 64-Bit Server VM Corretto-15.0.1.9.1 (build 15.0.1+9, mixed mode, sharin
 
 To change where the uploaded job files as well as resulting output files are stored on filesystem, you can modify the `app-configs.jobFilesLocation` property in the `application.properties` file.
 
-Using gradle-wrapper run the SpringBoot project
+Using gradle-wrapper run the SpringBoot application
 ```
 $ ./gradlew bootRun
 ```
@@ -35,6 +35,8 @@ $ gradlew.bat bootRun
 ```
 
 This will run the embedded Tomcat bound to `localhost` and listening on port `8080`
+
+*NOTE:* Gradle will show `<==========---> 80% EXECUTING` and just appears as if it hung! Don't worry. This is default behaviour of Gradle while running SpringBoot applications. A more meaninfgul log entry to notice is `Started AsyncJobsOverRestfulApi in 1.885 seconds (JVM running for 2.172)` after which you can proceed with tests. Gradle stays at 80% (or any random xx%) simply waiting for the application to be killed. To kill the application hit `ctrl+c`
 
 # Test
 
