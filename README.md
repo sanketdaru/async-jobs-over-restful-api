@@ -45,6 +45,17 @@ Use your favourite REST client to issue requests and check the output. For the s
 curl --location --request POST 'http://localhost:8080/api/v1/jobs' \
 --form 'file=@"sample.txt"'
 ```
+Notice that as soon as a new job is posted, the response is received. Notice the `nio-8080-exec-` thread name which belongs to Tomcat ...
+```
+[nio-8080-exec-2] c.s.p.a.controller.JobsController        : Received request with file.
+```
+... and the actual job is executed by another job in a thread named `MyAsyncThread-`
+```
+[MyAsyncThread-1] c.s.poc.asyncjob.service.JobsService     : Received request with job-id d0f69d7a-a8b9-422b-8f48-3789ae1309b2 and file /var/tmp/d0f69d7a-a8b9-422b-8f48-3789ae1309b2.in
+[MyAsyncThread-1] c.s.poc.asyncjob.helper.FileHelper       : Reading from file: /var/tmp/d0f69d7a-a8b9-422b-8f48-3789ae1309b2.in
+[MyAsyncThread-1] c.s.poc.asyncjob.helper.FileHelper       : Writing to file: /var/tmp/d0f69d7a-a8b9-422b-8f48-3789ae1309b2.out
+[MyAsyncThread-1] c.s.poc.asyncjob.service.JobsService     : Completed processing the request.
+```
 
 2. GET the status of the posted asynchronous job. Use `job_id` received as response from posting a new job command as an input to next command
 ``` curl
