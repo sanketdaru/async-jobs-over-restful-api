@@ -47,13 +47,15 @@ curl --location --request POST 'http://localhost:8080/api/v1/jobs' \
 ```
 As soon as a new job is posted by client a response is received immediately. Notice the `nio-8080-exec-` thread name which belongs to Tomcat handling the incoming request...
 ```
-[nio-8080-exec-2] c.s.p.a.controller.JobsController        : Received request with file.
+[nio-8080-exec-1] c.s.p.a.controller.JobsController        : Received request for asynchronous file processing.
+[nio-8080-exec-1] c.s.p.a.controller.JobsController        : Generated job-id 26e62d65-3e6a-4aab-8d79-a64f1eeee783 for this request.
+[nio-8080-exec-1] c.s.p.a.controller.JobsController        : Job-id 26e62d65-3e6a-4aab-8d79-a64f1eeee783 submitted for processing. Returning from controller.
 ```
 ... however the actual job is executed asynchronously in another thread named `MyAsyncThread-`
 ```
-[MyAsyncThread-1] c.s.poc.asyncjob.service.JobsService     : Received request with job-id d0f69d7a-a8b9-422b-8f48-3789ae1309b2 and file /var/tmp/d0f69d7a-a8b9-422b-8f48-3789ae1309b2.in
-[MyAsyncThread-1] c.s.poc.asyncjob.helper.FileHelper       : Reading from file: /var/tmp/d0f69d7a-a8b9-422b-8f48-3789ae1309b2.in
-[MyAsyncThread-1] c.s.poc.asyncjob.helper.FileHelper       : Writing to file: /var/tmp/d0f69d7a-a8b9-422b-8f48-3789ae1309b2.out
+[MyAsyncThread-1] c.s.poc.asyncjob.service.JobsService     : Received request with job-id 26e62d65-3e6a-4aab-8d79-a64f1eeee783 and file /var/tmp/26e62d65-3e6a-4aab-8d79-a64f1eeee783.in
+[MyAsyncThread-1] c.s.poc.asyncjob.helper.FileHelper       : Reading from file: /var/tmp/26e62d65-3e6a-4aab-8d79-a64f1eeee783.in
+[MyAsyncThread-1] c.s.poc.asyncjob.helper.FileHelper       : Writing to file: /var/tmp/26e62d65-3e6a-4aab-8d79-a64f1eeee783.out
 [MyAsyncThread-1] c.s.poc.asyncjob.service.JobsService     : Completed processing the request.
 ```
 
