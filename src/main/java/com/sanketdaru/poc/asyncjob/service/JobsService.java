@@ -70,6 +70,8 @@ public class JobsService extends BaseService {
 		} catch (InterruptedException e) {
 			LOGGER.error("Error while counting characters in file.", e);
 			task.completeExceptionally(e);
+		} finally {
+			file.delete();
 		}
 		
 		LOGGER.info("Completed processing the request.");
