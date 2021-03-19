@@ -46,9 +46,10 @@ public class JobsController {
 	@PostMapping(consumes = "multipart/form-data", produces = "application/json")
 	public SimpleResponse postJobWithFile(@RequestParam("file") MultipartFile file) 
 			throws Throwable {
-		LOGGER.debug("Received request with file.");
+		LOGGER.info("Received request for asynchronous file processing.");
 
 		String jobId = UUID.randomUUID().toString();
+		LOGGER.info("Generated job-id {} for this request.", jobId);
 		
 		if (null != jobsService.fetchJob(jobId)) {
 			throw new ErrorWhileProcessingRequest("A job with same job-id already exists!", true);
@@ -63,6 +64,7 @@ public class JobsController {
 
 		asyncJobsManager.putJob(jobId, completableFuture);
 
+		LOGGER.info("Job-id {} submitted for processing. Returning from controller.", jobId);
 		return new SimpleResponse(jobId, RequestStatus.SUBMITTED);
 	}
 
