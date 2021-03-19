@@ -65,6 +65,7 @@ As soon as a new job is posted by client a response is received immediately. Not
 ``` curl
 curl --location --request GET 'http://localhost:8080/api/v1/jobs/{job_id}'
 ```
+Once the job status is COMPLETE, you can check the location configured by `app-configs.jobFilesLocation` property to inspect the job output file.
 
 3. GET the output file produced as a result of completion of the posted asynchronous job. Use the `output_file_uri` received as response from get the status command as an input to next command
 ``` curl
@@ -75,3 +76,4 @@ curl --location --request GET 'http://localhost:8080/{output_file_uri}'
 ``` curl
 curl --location --request DELETE 'http://localhost:8080/api/v1/jobs/{job_id}'
 ```
+You can check the location configured by `app-configs.jobFilesLocation` property to ensure the job output file is really deleted.
