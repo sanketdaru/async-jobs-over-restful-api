@@ -45,11 +45,11 @@ Use your favourite REST client to issue requests and check the output. For the s
 curl --location --request POST 'http://localhost:8080/api/v1/jobs' \
 --form 'file=@"sample.txt"'
 ```
-Notice that as soon as a new job is posted, the response is received. Notice the `nio-8080-exec-` thread name which belongs to Tomcat ...
+As soon as a new job is posted by client a response is received immediately. Notice the `nio-8080-exec-` thread name which belongs to Tomcat handling the incoming request...
 ```
 [nio-8080-exec-2] c.s.p.a.controller.JobsController        : Received request with file.
 ```
-... and the actual job is executed by another job in a thread named `MyAsyncThread-`
+... however the actual job is executed asynchronously in another thread named `MyAsyncThread-`
 ```
 [MyAsyncThread-1] c.s.poc.asyncjob.service.JobsService     : Received request with job-id d0f69d7a-a8b9-422b-8f48-3789ae1309b2 and file /var/tmp/d0f69d7a-a8b9-422b-8f48-3789ae1309b2.in
 [MyAsyncThread-1] c.s.poc.asyncjob.helper.FileHelper       : Reading from file: /var/tmp/d0f69d7a-a8b9-422b-8f48-3789ae1309b2.in
