@@ -56,5 +56,5 @@ curl --location --request GET 'http://localhost:8080/{output_file_uri}'
 
 4. DELETE the job as well as the output file. Use `job_id` received as response from posting a new job command as an input to next command
 ``` curl
-curl --location --request DELETE 'http://localhost:8080/api/v1/jobs/d0f69d7a-a8b9-422b-8f48-3789ae1309b2'
+curl --location --request DELETE 'http://localhost:8080/api/v1/jobs/{job_id}'
 ```
