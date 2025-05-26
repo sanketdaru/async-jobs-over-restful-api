@@ -27,15 +27,6 @@ public class FileHelper {
 
 	public static String fetchFileContents(File file) throws IOException {
 		LOGGER.debug("Reading from file: {}", file.getAbsoluteFile());
-		StringBuilder fileContents = new StringBuilder();
-		try (BufferedReader br = Files.newBufferedReader(Paths.get(file.getAbsolutePath()))) {
-			String line;
-			while ((line = br.readLine()) != null) {
-				fileContents.append(line);
-				fileContents.append(' ');
-			}
-		}
-		
-		return fileContents.toString();
+		return Files.readString(Paths.get(file.getAbsolutePath()));
 	}
 }
