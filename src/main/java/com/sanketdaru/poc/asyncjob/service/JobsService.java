@@ -3,6 +3,7 @@ package com.sanketdaru.poc.asyncjob.service;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,20 +39,13 @@ public class JobsService extends BaseService {
 			
 			// Trivial loop to demonstrate a long-running task
 			for (int i=0; i<fileContents.length(); i++) {
-				switch(fileContents.charAt(i)){
+				switch(Character.toLowerCase(fileContents.charAt(i))){
 					case 'a':
-					case 'A':
 					case 'e':
-					case 'E':
 					case 'i':
-					case 'I':
 					case 'o':
-					case 'O':
-					case 'u':
-					case 'U': numberOfVowels++;
+					case 'u': numberOfVowels++;
 				}
-				
-				Thread.sleep(100);
 			}
 			
 			StringBuilder outputFileContents =  new StringBuilder();
@@ -85,25 +79,22 @@ public class JobsService extends BaseService {
 			return new SimpleResponse(jobId, RequestStatus.IN_PROGRESS);
 		}
 
-		Throwable[] errors = new Throwable[1];
-		SimpleResponse[] simpleResponses = new SimpleResponse[1];
-		completableFuture.whenComplete((response, ex) -> {
-			if (ex != null) {
-				errors[0] = ex.getCause();
-			} else {
-				StringBuilder outputFileUri = new StringBuilder(API_V1_JOBS);
-				outputFileUri.append(jobId);
-				outputFileUri.append(OUTPUT_FILE);
-				response.setOutputFileURI(outputFileUri.toString());
-				simpleResponses[0] = response;
-			}
-		});
-
-		if (errors[0] != null) {
-			throw errors[0];
+		// If future is done, get the result directly
+		try {
+			SimpleResponse response = completableFuture.get();
+			StringBuilder outputFileUri = new StringBuilder(API_V1_JOBS);
+			outputFileUri.append(jobId);
+			outputFileUri.append(OUTPUT_FILE);
+			response.setOutputFileURI(outputFileUri.toString());
+			return response;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt(); // Preserve interrupt status
+			LOGGER.error("Job status retrieval interrupted.", e);
+			throw new ErrorWhileProcessingRequest("Job status retrieval interrupted for job ID: " + jobId, e, true);
+		} catch (ExecutionException e) {
+			LOGGER.error("Job execution failed for job ID: " + jobId, e.getCause());
+			throw e.getCause();
 		}
-
-		return simpleResponses[0];
 	}
 	
 	public File getJobOutputFile(String jobId) throws Throwable {
@@ -122,21 +113,18 @@ public class JobsService extends BaseService {
 			throw new ErrorWhileProcessingRequest("Job is still in progress...", true);
 		}
 
-		Throwable[] errors = new Throwable[1];
-		SimpleResponse[] simpleResponses = new SimpleResponse[1];
-		completableFuture.whenComplete((response, ex) -> {
-			if (ex != null) {
-				errors[0] = ex.getCause();
-			} else {
-				simpleResponses[0] = response;
-			}
-		});
-
-		if (errors[0] != null) {
-			throw errors[0];
+		// If future is done, get the result directly
+		try {
+			SimpleResponse response = completableFuture.get();
+			return response.getOutputFile();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt(); // Preserve interrupt status
+			LOGGER.error("Job output file retrieval interrupted.", e);
+			throw new ErrorWhileProcessingRequest("Job output file retrieval interrupted for job ID: " + jobId, e, true);
+		} catch (ExecutionException e) {
+			LOGGER.error("Job execution failed for job ID: " + jobId, e.getCause());
+			throw e.getCause();
 		}
-
-		return simpleResponses[0].getOutputFile();
 	}
 
 	public SimpleResponse deleteJobAndAssociatedData(String jobId) throws ErrorWhileProcessingRequest {
@@ -144,41 +132,79 @@ public class JobsService extends BaseService {
 
 		if (null == completableFuture) {
 			File outputFile = getOutputFile(jobId);
-			if(outputFile.exists()) {
-				outputFile.delete();
+			if (outputFile.exists()) {
+				if (outputFile.delete()) {
+					LOGGER.info("Deleted output file for non-tracked job ID: {}", jobId);
+				} else {
+					LOGGER.warn("Could not delete output file for non-tracked job ID: {}", jobId);
+				}
 				return new SimpleResponse(jobId, RequestStatus.DELETED);
 			}
-			
 			throw new ErrorWhileProcessingRequest(JOB_WITH_SUPPLIED_JOB_ID_NOT_FOUND, true);
 		}
 		
+		// Attach cleanup logic to the CompletableFuture.
+		// This will run when the future completes, whether it's already done or completes later.
+		completableFuture.whenComplete((response, ex) -> {
+			cleanupJobResources(jobId, response, ex);
+		});
+
+		// If the job is not yet done, report IN_PROGRESS.
+		// The cleanup will be handled by whenComplete when the job eventually finishes.
 		if (!completableFuture.isDone()) {
 			return new SimpleResponse(jobId, RequestStatus.IN_PROGRESS);
 		}
-
-		completableFuture.whenComplete((response, ex) -> {
-			if (ex != null) {
-				LOGGER.error("Job failed with exception.", ex);
-			}
-
-			if (null != response && null != response.getOutputFile()) {
-				if (response.getOutputFile().exists()) {
-					response.getOutputFile().delete();
-				}
-			} else {
-				File outputFile = getOutputFile(jobId);
-				if(outputFile.exists()) {
-					outputFile.delete();
-				}
-			}
-
-			asyncJobsManager.removeJob(jobId);
-		});
-
+		
+		// If the job is already done, return DELETED status.
+		// The whenComplete attached above will handle the cleanup.
 		return new SimpleResponse(jobId, RequestStatus.DELETED);
+	}
+
+	/**
+	 * Helper method to clean up job resources (output file and remove from manager).
+	 * This is called when a job completes (successfully or exceptionally).
+	 */
+	private void cleanupJobResources(String jobId, SimpleResponse response, Throwable ex) {
+		if (ex != null) {
+			// If ex is ExecutionException, its cause is the actual exception from the async task
+			Throwable cause = ex.getCause();
+			LOGGER.error("Job ID: {} processing finished with exception. Cleaning up associated data.", jobId, cause != null ? cause : ex);
+		} else {
+			LOGGER.info("Job ID: {} processing finished successfully. Cleaning up associated data.", jobId);
+		}
+
+		File outputFileToDelete = null;
+		// Attempt to get output file from response, otherwise construct path
+		if (response != null && response.getOutputFile() != null) {
+			outputFileToDelete = response.getOutputFile();
+		} else {
+			outputFileToDelete = getOutputFile(jobId); // Fallback for jobs that failed early or response is minimal
+		}
+
+		if (outputFileToDelete != null && outputFileToDelete.exists()) {
+			if (outputFileToDelete.delete()) {
+				LOGGER.info("Successfully deleted output file: {} for job ID: {}", outputFileToDelete.getAbsolutePath(), jobId);
+			} else {
+				LOGGER.warn("Could not delete output file: {} for job ID: {}", outputFileToDelete.getAbsolutePath(), jobId);
+			}
+		} else {
+			LOGGER.info("No output file to delete or file already deleted for job ID: {}", jobId);
+		}
+		
+		// Always attempt to remove the job from the manager after its completion and cleanup attempt
+		boolean removed = asyncJobsManager.removeJob(jobId);
+		if(removed) {
+			LOGGER.info("Removed job ID: {} from async jobs manager.", jobId);
+		} else {
+			// This can be normal if the job was already removed or completed very quickly
+			LOGGER.info("Job ID: {} was not found in async jobs manager for removal (may have been removed prior or completed rapidly).", jobId);
+		}
 	}
 	
 	private File getOutputFile(String jobId) {
+		return new File(appConfigs.getJobFilesLocation(), jobId + ".out");
+	}
+}
 		return new File(appConfigs.getJobFilesLocation(), jobId + ".out");
 	}
 }

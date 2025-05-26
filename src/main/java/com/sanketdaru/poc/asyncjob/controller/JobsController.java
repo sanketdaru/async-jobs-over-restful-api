@@ -80,12 +80,14 @@ public class JobsController {
 		LOGGER.debug("Received request to fetch output file of job-id: {}", jobId);
 
 		File outputFile = jobsService.getJobOutputFile(jobId);
-		InputStreamResource resource = new InputStreamResource(new FileInputStream(outputFile));
-
-		return ResponseEntity.ok()
-				.contentLength(outputFile.length())
-				.contentType(MediaType.APPLICATION_OCTET_STREAM)
-				.body(resource);
+		
+		try (FileInputStream fis = new FileInputStream(outputFile)) {
+			InputStreamResource resource = new InputStreamResource(fis);
+			return ResponseEntity.ok()
+					.contentLength(outputFile.length())
+					.contentType(MediaType.APPLICATION_OCTET_STREAM)
+					.body(resource);
+		}
 	}
 
 	@DeleteMapping(path = "/{job-id}", produces = "application/json")
